@@ -173,9 +173,10 @@ func (e *Engine) assignVol(size int64) (*VirtualVolume, error) {
 		return nil, ErrAllVolumesFull
 	}
 
+	currVolIdx := e.volumeidx
 	for nextIdx := 0; nextIdx < totalVol; nextIdx++ {
-		destinationVolIdx := ((e.volumeidx + uint64(nextIdx)) % uint64(totalVol)) // reset volume index to 0, if the volume index is out of bound
-		vol := e.volume[destinationVolIdx]                                        // update the next index to be selected
+		destinationVolIdx := (currVolIdx + uint64(nextIdx)) % uint64(totalVol)
+		vol := e.volume[destinationVolIdx]
 
 		if vol.IsFull || (vol.UsedBytes+size > vol.MaxBytes) {
 			continue
