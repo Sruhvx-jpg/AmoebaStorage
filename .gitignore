@@ -1,0 +1,13 @@
+# Storage data directory
+data/
+
+# Binaries
+bin/
+dist/
+*.exe
+*.test
+AmoebaStorage
+
+# OS metadata
+.DS_Store
+.directory
