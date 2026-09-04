@@ -21,6 +21,9 @@ type Engine struct {
 	shardingEnable bool
 	retriesLimit   int
 
+	// ghost conf
+	// streamBufferSize int
+
 	volMu     sync.RWMutex
 	volume    []*VirtualVolume
 	volumeidx uint64
@@ -213,7 +216,7 @@ func (e *Engine) eatObject(vol *VirtualVolume, size int64, stream io.Reader, exp
 	hasher := crc32.New(crc32.MakeTable(crc32.Castagnoli))
 	pipeDest := io.MultiWriter(file, hasher)
 
-	buf := make([]byte, 32*1024)
+	buf := make([]byte, defaultStreamBufferSize)
 	written, err := io.CopyBuffer(pipeDest, stream, buf)
 	if err != nil {
 		os.Remove(objectPath)

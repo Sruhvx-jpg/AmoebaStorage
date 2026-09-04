@@ -23,6 +23,9 @@ type conf struct {
 	VirtualVolumesCap    int
 	VirtualVolumeSizeCap int64
 	CleanUpCycleWindow   time.Duration
+
+	// ghost conf
+	// StreamBufferSize int // Future: tune streaming scratchpad buffer (e.g. 32KB, 64KB, 128KB)
 }
 
 const (

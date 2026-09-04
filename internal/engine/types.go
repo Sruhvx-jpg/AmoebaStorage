@@ -7,10 +7,11 @@ import (
 )
 
 const (
-	markerFileName   = ".amoeba"
-	volumesDirname   = "volumes"
-	metadatDirName   = "metadata"
-	currentStackFile = "CURRENT"
+	markerFileName          = ".amoeba"
+	volumesDirname          = "volumes"
+	metadatDirName          = "metadata"
+	currentStackFile        = "CURRENT"
+	defaultStreamBufferSize = 32 * 1024 // 32 KB scratchpad buffer for streaming writes
 )
 
 var SpeciesRoster = []string{
