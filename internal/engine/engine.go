@@ -48,12 +48,12 @@ func AmoebaBelly(absRoot string, virtualVolumesCap int, virtualVolumeSizeCap int
 	info, err := os.Stat(absRoot)
 	if err != nil {
 		if !os.IsNotExist(err) {
-			return nil, fmt.Errorf("failed to inspect data directory: %w", err)
+			return nil, fmt.Errorf("%w: %w", ErrInspectDirectory, err)
 		}
 
 		// Directory doesn't exist yet: create one fresh
 		if err := os.MkdirAll(absRoot, 0o755); err != nil {
-			return nil, fmt.Errorf("failed to create data directory: %w", err)
+			return nil, fmt.Errorf("%w: %w", ErrCreateDirectory, err)
 		}
 	} else {
 		// Directory exists: must be a real directory, not a plain file
@@ -64,7 +64,7 @@ func AmoebaBelly(absRoot string, virtualVolumesCap int, virtualVolumeSizeCap int
 		// Read contents to guard against collisions with our sub-directories
 		entries, err := os.ReadDir(absRoot)
 		if err != nil {
-			return nil, fmt.Errorf("failed to read data directory: %w", err)
+			return nil, fmt.Errorf("%w: %w", ErrInspectDirectory, err)
 		}
 
 		hasMarker := false
@@ -93,20 +93,20 @@ func AmoebaBelly(absRoot string, virtualVolumesCap int, virtualVolumeSizeCap int
 	markerPath := filepath.Join(absRoot, markerFileName)
 	markerFile, err := os.OpenFile(markerPath, os.O_CREATE|os.O_WRONLY, 0o644)
 	if err != nil {
-		return nil, fmt.Errorf("failed to touch marker file: %w", err)
+		return nil, fmt.Errorf("%w: %w", ErrMarkerFile, err)
 	}
 	markerFile.Close()
 
 	// 1. Provision the metadata/ directory
 	metadataDir := filepath.Join(absRoot, metadatDirName)
 	if err := os.MkdirAll(metadataDir, 0o755); err != nil {
-		return nil, fmt.Errorf("failed to create metadata directory: %w", err)
+		return nil, fmt.Errorf("%w: %w", ErrCreateDirectory, err)
 	}
 
 	// 2. Provision the volumes/ directory
 	volumesDir := filepath.Join(absRoot, volumesDirname)
 	if err := os.MkdirAll(volumesDir, 0o755); err != nil {
-		return nil, fmt.Errorf("failed to create volumes directory: %w", err)
+		return nil, fmt.Errorf("%w: %w", ErrCreateDirectory, err)
 	}
 
 	// 3. Provision each species volume from the roster
@@ -122,7 +122,7 @@ func AmoebaBelly(absRoot string, virtualVolumesCap int, virtualVolumeSizeCap int
 		volPath := filepath.Join(volumesDir, speciesName)
 
 		if err := os.MkdirAll(volPath, 0o755); err != nil {
-			return nil, fmt.Errorf("failed to create volume %s: %w", speciesName, err)
+			return nil, fmt.Errorf("%w %s: %w", ErrCreateVolume, speciesName, err)
 		}
 
 		provisionedVolumes = append(provisionedVolumes, &VirtualVolume{
@@ -140,7 +140,7 @@ func AmoebaBelly(absRoot string, virtualVolumesCap int, virtualVolumeSizeCap int
 func New(rootDir string, shardingEnable bool, retriesLimit int, virtualVolumesCap int, virtualVolumeSizeCap int64) (*Engine, error) {
 	absRoot, err := filepath.Abs(rootDir)
 	if err != nil {
-		return nil, fmt.Errorf("failed to resolve absolute path: %w", err)
+		return nil, fmt.Errorf("%w: %w", ErrResolvePath, err)
 	}
 
 	volumes, err := AmoebaBelly(absRoot, virtualVolumesCap, virtualVolumeSizeCap)
@@ -198,14 +198,14 @@ func (e *Engine) assignVol(size int64) (*VirtualVolume, error) {
 func (e *Engine) eatObject(vol *VirtualVolume, size int64, stream io.Reader, expectedHash uint32) (string, int64, uint32, error) {
 	idBytes := make([]byte, 16)
 	if _, err := rand.Read(idBytes); err != nil {
-		return "", 0, 0, fmt.Errorf("failed to generate object id: %w", err)
+		return "", 0, 0, fmt.Errorf("%w: %w", ErrGenerateID, err)
 	}
 	objectID := hex.EncodeToString(idBytes)
 	objectPath := filepath.Join(vol.Path, objectID)
 
 	file, err := os.OpenFile(objectPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 	if err != nil {
-		return "", 0, 0, fmt.Errorf("failed to open object file: %w", err)
+		return "", 0, 0, fmt.Errorf("%w: %w", ErrFileOpen, err)
 	}
 	defer file.Close()
 
@@ -216,12 +216,12 @@ func (e *Engine) eatObject(vol *VirtualVolume, size int64, stream io.Reader, exp
 	written, err := io.CopyBuffer(pipeDest, stream, buf)
 	if err != nil {
 		os.Remove(objectPath)
-		return "", 0, 0, fmt.Errorf("stream write failed: %w", err)
+		return "", 0, 0, fmt.Errorf("%w: %w", ErrStreamWrite, err)
 	}
 
 	if err := file.Sync(); err != nil {
 		os.Remove(objectPath)
-		return "", 0, 0, fmt.Errorf("failed to sync object: %w", err)
+		return "", 0, 0, fmt.Errorf("%w: %w", ErrDiskSync, err)
 	}
 
 	if written != size {
@@ -256,7 +256,7 @@ func (e *Engine) registerObject(vol *VirtualVolume, key string, objectID string,
 
 	metaBytes, err := json.MarshalIndent(entry, "", "  ")
 	if err != nil {
-		return "", fmt.Errorf("failed to serialize metadata: %w", err)
+		return "", fmt.Errorf("%w: %w", ErrSerializeMetadata, err)
 	}
 
 	metaFileName := fmt.Sprintf("stack.%s.meta", objectID)
@@ -302,7 +302,7 @@ func (e *Engine) registerObject(vol *VirtualVolume, key string, objectID string,
 		time.Sleep(time.Duration(attempt*25) * time.Millisecond)
 	}
 
-	return "", fmt.Errorf("failed to write meta stack file after %d attempts: %w", maxRetries, lastErr)
+	return "", fmt.Errorf("%w after %d attempts: %w", ErrMetaStackWrite, maxRetries, lastErr)
 }
 
 func (e *Engine) Ingest(key string, size int64, stream io.Reader, expectedCRC32 uint32) (string, error) {
