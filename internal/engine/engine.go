@@ -174,8 +174,8 @@ func (e *Engine) assignVol(size int64) (*VirtualVolume, error) {
 	}
 
 	for nextIdx := 0; nextIdx < totalVol; nextIdx++ {
-		idx := ((e.volumeidx + uint64(nextIdx)) % uint64(totalVol)) // reset volume index to 0, if the volume index is out of bound
-		vol := e.volume[idx]                                        // update the next index to be selected
+		destinationVolIdx := ((e.volumeidx + uint64(nextIdx)) % uint64(totalVol)) // reset volume index to 0, if the volume index is out of bound
+		vol := e.volume[destinationVolIdx]                                        // update the next index to be selected
 
 		if vol.IsFull || (vol.UsedBytes+size > vol.MaxBytes) {
 			continue
@@ -186,7 +186,7 @@ func (e *Engine) assignVol(size int64) (*VirtualVolume, error) {
 			vol.IsFull = true
 		}
 
-		e.volumeidx = (idx + 1) % uint64(totalVol)
+		e.volumeidx = (destinationVolIdx + 1) % uint64(totalVol)
 		return vol, nil
 	}
 
